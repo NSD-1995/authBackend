@@ -1,17 +1,13 @@
-import {
-  Injectable,
-  BadRequestException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, BadRequestException, UnauthorizedException, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Users, UserDocument } from './users.schema';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-import { Response } from 'express';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
   constructor(
     @InjectModel(Users.name) private userModel: Model<UserDocument>,
     private jwtService: JwtService,
@@ -22,6 +18,7 @@ export class UsersService {
       .findOne({ email: createUserDto.email })
       .exec();
     if (userAvailable) {
+      this.logger.error('A user already exists with this email');
       throw new BadRequestException('A user already exists with this email');
     }
 
@@ -31,6 +28,7 @@ export class UsersService {
       password: hashedPassword,
       email: createUserDto.email,
     });
+    this.logger.log('User created successfully');
     return createdUser.save();
   }
 
@@ -39,6 +37,7 @@ export class UsersService {
       .findOne({ email: fetchUsersDto.email })
       .exec();
     if (!user) {
+      this.logger.error('User not found');
       throw new UnauthorizedException('User not found');
     }
 
@@ -47,19 +46,25 @@ export class UsersService {
       user.password,
     );
     if (!isPasswordMatching) {
+      this.logger.error('Invalid password');
       throw new UnauthorizedException('Invalid password');
     }
     const jwt = await this.jwtService.signAsync({
       id: user._id,
       email: user.email,
     });
+    this.logger.log('Token created successfully');
     return jwt;
   }
 
-  async findOne(id:string): Promise<any> {
+  async findOne(id: string): Promise<any> {
     const user = await this.userModel.findById(id).exec();
-    const {password,...userdata}=user.toObject()
-    console.log(userdata)
+    if (!user) {
+      this.logger.error('User not found');
+      throw new BadRequestException('User not found');
+    }
+    const { password, ...userdata } = user.toObject();
+    this.logger.log('User data');
     return userdata;
   }
 }
