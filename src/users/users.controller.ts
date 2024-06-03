@@ -44,7 +44,7 @@ export class UsersController {
 
   @Get('user')
   async user(@Req() req:Request,@Res() res:Response){
-    //try{
+    try{
       const cookies=req.cookies['jwt']
       const userVerification= await this.jwtService.verifyAsync(cookies)
       if(!userVerification){
@@ -52,14 +52,13 @@ export class UsersController {
       }else{
         const users = await this.usersService.findOne(userVerification.id);
           const {password,...userdata}=users
-    // console.log("users-------",userdata)
-    // return userdata;
+    return userdata;
        
         res.status(HttpStatus.OK).json(userdata);
       } 
-    // }catch(e){
-    //     throw new UnauthorizedException();
-    // }
+    }catch(e){
+        throw new UnauthorizedException();
+    }
 
 
 
